@@ -31,8 +31,8 @@
 **前置：**
 
 ```bash
-# 1. 裝 Node.js 後，全域裝 clasp
-npm install -g @google/clasp
+# 1. 裝 Node.js 後，全域裝 clasp（釘 v3，免得裝到 v2 指令對不上）
+npm install -g @google/clasp@3
 
 # 2. 到 https://script.google.com/home/usersettings 把「Apps Script API」打開（clasp create 需要）
 
@@ -40,6 +40,8 @@ npm install -g @google/clasp
 #    否則部署後 DriveApp 讀不到資料夾（這個帳號錯了整個會白做）。
 clasp login
 ```
+
+> ⚠️ **clasp 版本**：本教學的 `clasp create-script`、`clasp redeploy` 是 **clasp v3.x** 的指令。舊版 v2 的對應指令不同（建立是 `clasp create`、且沒有 `redeploy`）——若你之前裝過舊版，先 `npm install -g @google/clasp@3` 升上來再照做。用 `clasp --version` 確認。
 
 > clasp 切帳號：若 `clasp login` 已登入別的帳號、又沒有覆蓋選項，先把舊登入檔移開再重登：
 > `mv ~/.clasprc.json ~/.clasprc.json.bak && clasp login`。登完它會印「You are logged in as <你的 email>」，**確認是對的帳號**再往下。

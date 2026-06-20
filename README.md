@@ -20,7 +20,8 @@ A 推播、B 存檔、C 回查，**三塊共用同一個 LINE 帳號，但程式
 ## 你要先準備
 
 1. **一個 LINE Official Account**（在 [LINE Developers](https://developers.line.biz) 開了 Messaging API channel）
-   → 拿到 **channel access token** 和**你自己的 LINE userId**（U 開頭 33 字，不是 Channel ID）。
+   → 發一組 **long-lived channel access token**（在 channel 的 **Messaging API** 分頁發行，別用會過期的短期 token）；
+   → 並到 channel 的 **Basic settings** 分頁最下面複製 **Your user ID**（U 開頭 33 字，這就是你本人的 userId，**不是** Channel ID）。
 2. **一個 Google 帳號**（Drive 放存檔、跑 GAS）。
 3. **Claude Max**（A 的每日 Routine 要用。只想做 C 互動 bot 的話，可跳過 A／B）。
 4. （選用）**Node.js ＋ clasp**：C 的 GAS 程式可用網頁編輯器貼，也可用 [clasp](https://github.com/google/clasp) 命令列建／推／更新（兩種建法在 `2-互動查詢bot（GAS）.md` 的 G1 都有寫）。

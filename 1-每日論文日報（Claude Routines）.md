@@ -21,15 +21,17 @@
 
 ## Step 1：建 Routine ＋ 環境設定
 
-在 Claude 建一個新的 Routine（排程代理），**Environment（環境）** 這樣設：
+**Routines 在哪**：Routines 是 Claude 的雲端排程代理功能（**需要 Claude Max**，電腦關機也照跑）。在你的 Claude 介面找到「Routines／排程」入口，新建一個。看不到這個入口，代表你的方案或地區還沒開放 Routines。
+
+新建後，**Environment（環境）** 這樣設：
 
 | 項目 | 值 |
 |---|---|
 | 網路存取 | **Custom**，只放行兩個網域：`api.line.me`、`eutils.ncbi.nlm.nih.gov`（不要開 Full）|
-| 連接器 | 掛上 **Google Drive**（去重讀寫＋存檔靠它；連接器流量不受網路允許清單限制）|
-| 環境變數 | `LINE_CHANNEL_ACCESS_TOKEN` = 你的 LINE channel access token；`DIGEST_TARGET_USER_ID` = 你的 LINE userId（U 開頭 33 字，**不是** Channel ID）|
+| 連接器 | 掛上 **Google Drive**（去重讀寫＋存檔靠它；連接器流量不受網路允許清單限制）。**第一次要先在 Claude 的連接器設定把 Google Drive 接上、過一次 Google OAuth 授權**（允許讀寫你的 Drive），Routine 才叫得到 `search_files`／`create_file`／`download_file_content` 這些工具。|
+| 環境變數 | `LINE_CHANNEL_ACCESS_TOKEN` = 你的 **long-lived** channel access token（LINE Developers → 你的 channel → **Messaging API** 分頁發行）；`DIGEST_TARGET_USER_ID` = 你的 LINE userId（LINE Developers → 你的 channel → **Basic settings** 分頁最下面「Your user ID」，U 開頭 33 字，**不是** Channel ID）|
 | 排程 | Daily 08:00 Asia/Taipei（或你要的時間）|
-| 模型 | 建議用當下最強的（寫摘要品質較穩）|
+| 模型 | 建議用當下最強的（弱模型寫出來的中文重點品質會明顯變差、也較容易出錯）|
 
 > ⚠️ 環境變數欄位通常會警告「此環境的人都看得到，別放機密」。個人帳號、bot token 可隨時作廢，屬可接受的取捨；介意的話改用更嚴格的密鑰管理。
 
