@@ -13,6 +13,8 @@ class TestDigest(unittest.TestCase):
         self.assertEqual(cfg["line_token"], "tok")
         self.assertEqual(cfg["target_id"], "U123")
         self.assertEqual(cfg["ai_provider"], "none")
+        self.assertEqual(cfg["dedup_dir"], "/tmp/dd")
+        self.assertEqual(cfg["archive_dir"], "/tmp/ar")
 
     def test_load_config_missing_required_exits(self):
         with mock.patch.dict(os.environ, {}, clear=True):
