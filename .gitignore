@@ -17,3 +17,10 @@ npm-debug.log*
 
 # log
 *.log
+
+# 路2 使用者真實設定（含 token/key/路徑）——只提交 config.example.env
+config.env
+A-每日日報/config.env
+
+# SDD 執行期 scratch（briefs/reports/ledger/diff），不進公開 repo
+.superpowers/
