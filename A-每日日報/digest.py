@@ -66,6 +66,24 @@ def build_paper_block(idx, title, pmid, point):
         lines.append(f"💡 {point}")
     return "\n".join(lines)
 
+def build_line_text(today, items, cap=CAP):
+    """建構 LINE 訊息：≤cap 完整展示（標題+🔗+💡），>cap 則前 cap 篇完整、其餘只列標題+連結。0 篇時回心跳。
+    日期格式 YYYY-MM-DD；heart beat 字串含「0 篇」；超量安全網段裡無 💡。"""
+    d = today.isoformat()
+    if not items:
+        return f"📭 急診論文日報 {d}：今天 0 篇新論文（系統正常）"
+    head = f"📬 急診論文日報 {d}（{min(len(items), cap)} 篇新）\n"
+    full = items[:cap]
+    body = "\n\n".join(build_paper_block(i + 1, it["title"], it["pmid"], it.get("point"))
+                       for i, it in enumerate(full))
+    out = head + "\n" + body
+    overflow = items[cap:]
+    if overflow:
+        extra = "\n".join(f"{it['title']} 🔗 https://pubmed.ncbi.nlm.nih.gov/{it['pmid']}/"
+                          for it in overflow)
+        out += f"\n\n━━ 超量未列（明天會補完整摘要）━━\n{extra}"
+    return out
+
 def build_archive_markdown(today, items):
     """建構每日存檔 Markdown，輸出必須能被 C（GAS Code.gs）的 searchArchive 逐字解析。
     結構：YAML frontmatter → \\n---\\n → 各篇 block 以 \\n\\n---\\n\\n 分隔。

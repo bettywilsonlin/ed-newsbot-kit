@@ -96,6 +96,20 @@ class TestDigest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertIn("https://pubmed.ncbi.nlm.nih.gov/333/", hits[0]["link"])
 
+    def test_line_text_zero_papers_heartbeat(self):
+        today = datetime.date(2026, 6, 21)
+        txt = digest.build_line_text(today, [], cap=50)
+        self.assertIn("0 篇", txt)
+
+    def test_line_text_overflow_safety_net(self):
+        today = datetime.date(2026, 6, 21)
+        items = [{"pmid": str(i), "title": f"T{i}", "abstract": "a", "point": "p"}
+                 for i in range(55)]
+        txt = digest.build_line_text(today, items, cap=50)
+        self.assertIn("超量", txt)
+        tail = txt.split("超量", 1)[1]   # 第 51 篇之後只列標題連結、不含 💡
+        self.assertNotIn("💡", tail)
+
 
 if __name__ == "__main__":
     unittest.main()
