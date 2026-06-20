@@ -104,3 +104,47 @@ def build_archive_markdown(today, items):
               for i, it in enumerate(items)]
     # 篇與篇、以及 frontmatter 區與內容，皆以一行 --- 隔開（符合 C 的 split(/\n-{3,}\n/)）
     return head + "\n---\n" + "\n\n---\n\n".join(blocks) + "\n"
+
+_PROMPT = ("你是急診醫師。只根據以下 abstract，用繁體中文寫 2-3 句臨床重點，"
+           "不得加入 abstract 沒有的數字或結論：\n\n")
+
+def _http_post_json(url, headers, payload):
+    """HTTP POST 工具函式，共 _call_anthropic 與 _call_openai 複用。"""
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+def _call_anthropic(abstract, key):
+    """呼叫 Anthropic API 生成 abstract 摘要。"""
+    resp = _http_post_json(
+        "https://api.anthropic.com/v1/messages",
+        {"x-api-key": key, "anthropic-version": "2023-06-01",
+         "content-type": "application/json"},
+        {"model": "claude-opus-4-8", "max_tokens": 300,
+         "messages": [{"role": "user", "content": _PROMPT + abstract}]})
+    return resp["content"][0]["text"].strip()
+
+def _call_openai(abstract, key):
+    """呼叫 OpenAI API 生成 abstract 摘要。"""
+    resp = _http_post_json(
+        "https://api.openai.com/v1/chat/completions",
+        {"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        {"model": "gpt-4o", "max_tokens": 300,
+         "messages": [{"role": "user", "content": _PROMPT + abstract}]})
+    return resp["choices"][0]["message"]["content"].strip()
+
+def write_summary(abstract, provider, api_key):
+    """生成單篇 abstract 的中文臨床重點摘要。
+
+    provider：'claude' / 'openai' / 'none'
+    回傳：成功時回字串，任何例外自動降級回 None（呼叫端據此只給標題連結）。
+    """
+    try:
+        if provider == "claude":
+            return _call_anthropic(abstract, api_key)
+        if provider == "openai":
+            return _call_openai(abstract, api_key)
+        return None
+    except Exception:
+        return None  # 自動降級：摘要失敗只給標題連結，不讓整支掛

@@ -110,6 +110,19 @@ class TestDigest(unittest.TestCase):
         tail = txt.split("超量", 1)[1]   # 第 51 篇之後只列標題連結、不含 💡
         self.assertNotIn("💡", tail)
 
+    def test_write_summary_none_returns_none(self):
+        self.assertIsNone(digest.write_summary("abstract text", "none", ""))
+
+    def test_write_summary_provider_failure_degrades_to_none(self):
+        def boom(*a, **k):
+            raise RuntimeError("api down")
+        with mock.patch.object(digest, "_call_anthropic", boom):
+            self.assertIsNone(digest.write_summary("abstract text", "claude", "key"))
+
+    def test_write_summary_success(self):
+        with mock.patch.object(digest, "_call_anthropic", lambda ab, key: "中文重點"):
+            self.assertEqual(digest.write_summary("abstract", "claude", "key"), "中文重點")
+
 
 if __name__ == "__main__":
     unittest.main()
