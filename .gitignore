@@ -24,3 +24,7 @@ A-每日日報/config.env
 
 # SDD 執行期 scratch（briefs/reports/ledger/diff），不進公開 repo
 .superpowers/
+
+# Python 編譯快取
+__pycache__/
+*.pyc

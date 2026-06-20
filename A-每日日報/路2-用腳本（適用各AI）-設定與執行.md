@@ -91,18 +91,18 @@
 
 ### 什麼是「C」？
 
-「C」是指 GAS（Google Apps Script）腳本，架設在 Google Sheets 上。它會讀取你存進 Google Drive 的論文 Markdown 檔，讓你可以在 Google Sheets 裡搜尋歷史論文。
+「C」是指 GAS（Google Apps Script）腳本，架設為 **LINE webhook bot**。設定好之後，你只要在 LINE 直接打關鍵字（例如 `REBOA`），bot 就會回查你存進 Google Drive 的歷史論文，附上標題、連結與中文重點；加上前綴 `All`（例如 `All REBOA`）則即時查詢全 PubMed 最近一年最相關的 5 篇。
 
 ### 要不要接？
 
 | 狀況 | 建議 |
 |---|---|
 | 只要每天 LINE 收到論文就好 | `ARCHIVE_DIR` **留空**，不用接 C |
-| 想在 Google Sheets 搜尋歷史論文 | 填 Google Drive 桌面同步路徑，再去設定 C |
+| 想在 LINE 打關鍵字回查你存過的論文 | 填 Google Drive 桌面同步路徑，再去設定 C |
 
 ### 接 C 時的存檔路徑
 
-若要接 C，`ARCHIVE_DIR` 要指向 **Google Drive 桌面應用程式同步的本機路徑**，格式長這樣：
+若要接 C，`ARCHIVE_DIR` 要指向 **Google Drive 桌面應用程式同步的本機路徑**，這樣論文 Markdown 檔才會同步到 Drive，讓 bot 的 GAS 端讀得到，格式長這樣：
 
 ```
 ~/Library/CloudStorage/GoogleDrive-<你的Gmail帳號>/我的雲端硬碟/<你選的子資料夾>/
@@ -114,7 +114,7 @@
 /Users/<你的帳號>/Library/CloudStorage/GoogleDrive-<你的Gmail>/我的雲端硬碟/ednews-archive/
 ```
 
-> **兩個前提**：(1) 你的 Mac 必須已安裝並登入 Google Drive 桌面應用程式；(2) C 那端（GAS）要設定好才能搜尋。C 的設定細節請見「**路2-用腳本-排程與各平台.md**」。
+> **兩個前提**：(1) 你的 Mac 必須已安裝並登入 Google Drive 桌面應用程式；(2) C 那端（GAS webhook）要設定好才能在 LINE 查詢。C 的完整設定步驟請見 `C-互動查詢bot（GAS）.md`。
 
 ---
 
@@ -148,7 +148,7 @@
 1. 在終端機切到這個腳本所在的資料夾：
 
    ```bash
-   cd "/Users/betty/Downloads/Claude agent/ed-newsbot-kit/A-每日日報"
+   cd "/Users/<你的帳號>/<存放 kit 的路徑>/ed-newsbot-kit/A-每日日報"
    ```
 
    （把路徑換成你自己的實際位置）
