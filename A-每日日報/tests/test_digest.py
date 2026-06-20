@@ -4,6 +4,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import digest
 
 
+# 模組層級函式（放 class 之外）：鏡像 Code.gs 行 65-71 的 searchArchive
+def _c_parser_extract(md_content):
+    """以 \n---\n 切篇、需含 🔗、抓 N./🔗/💡（重現 C 的 searchArchive）。"""
+    hits = []
+    for b in re.split(r"\n-{3,}\n", md_content):
+        if "🔗" not in b:
+            continue
+        title = re.search(r"(?:^|\n)\s*\d+\.\s*[^\n]+", b)
+        link = re.search(r"🔗[^\n]*", b)
+        point = re.search(r"💡[^\n]*", b)
+        if title and link:
+            hits.append({"title": title.group(0).strip(),
+                         "link": link.group(0),
+                         "point": point.group(0) if point else ""})
+    return hits
+
+
 class TestDigest(unittest.TestCase):
     def test_recent_dedup_filenames_filters_by_name_date(self):
         today = datetime.date(2026, 6, 21)
@@ -56,6 +73,28 @@ class TestDigest(unittest.TestCase):
         pmids = ["1", "2", "2", "3", "1"]
         seen = {"3"}
         self.assertEqual(digest.dedupe_pmids(pmids, seen), ["1", "2"])
+
+    def test_archive_markdown_is_parseable_by_c(self):
+        today = datetime.date(2026, 6, 21)
+        items = [
+            {"pmid": "111", "title": "REBOA in trauma", "abstract": "x", "point": "重點一"},
+            {"pmid": "222", "title": "ECPR outcomes", "abstract": "y", "point": "重點二"},
+        ]
+        md = digest.build_archive_markdown(today, items)
+        self.assertIn("2026-06-21", md)
+        hits = _c_parser_extract(md)
+        self.assertEqual(len(hits), 2)
+        self.assertIn("REBOA in trauma", hits[0]["title"])
+        self.assertIn("https://pubmed.ncbi.nlm.nih.gov/111/", hits[0]["link"])
+        self.assertIn("重點一", hits[0]["point"])
+
+    def test_archive_block_without_point_still_has_link(self):
+        today = datetime.date(2026, 6, 21)
+        items = [{"pmid": "333", "title": "No summary paper", "abstract": "z", "point": None}]
+        md = digest.build_archive_markdown(today, items)
+        hits = _c_parser_extract(md)
+        self.assertEqual(len(hits), 1)
+        self.assertIn("https://pubmed.ncbi.nlm.nih.gov/333/", hits[0]["link"])
 
 
 if __name__ == "__main__":

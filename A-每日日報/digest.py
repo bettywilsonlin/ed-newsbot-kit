@@ -56,3 +56,33 @@ def dedupe_pmids(pmids, seen):
         got.add(p)
         out.append(p)
     return out
+
+def build_paper_block(idx, title, pmid, point):
+    """建構單篇論文的 Markdown 區塊，供 build_archive_markdown 組合用。
+    格式契約：N. title / 🔗 URL / 💡 point（point 為 None 時省略）。
+    block 內不含裸 ---，確保 C 的 split(/\\n-{3,}\\n/) 不會誤切。"""
+    lines = [f"{idx}. {title}", f"🔗 https://pubmed.ncbi.nlm.nih.gov/{pmid}/"]
+    if point:
+        lines.append(f"💡 {point}")
+    return "\n".join(lines)
+
+def build_archive_markdown(today, items):
+    """建構每日存檔 Markdown，輸出必須能被 C（GAS Code.gs）的 searchArchive 逐字解析。
+    結構：YAML frontmatter → \\n---\\n → 各篇 block 以 \\n\\n---\\n\\n 分隔。
+    frontmatter 結尾的 ---\\n 讓 C 的 split(/\\n-{3,}\\n/) 正確切出首篇（frontmatter 區無 🔗，會被過濾）。"""
+    d = today.isoformat()
+    head = (
+        "---\n"
+        f"title: ED newsbot {d}\n"
+        "type: clipping\n"
+        "source: 急診論文日報（PubMed）\n"
+        f"created: {d}\n"
+        "tags: [clipping, emergency_medicine]\n"
+        "status: 待消化\n"
+        "---\n\n"
+        f"# 急診論文日報 {d}（{len(items)} 篇新）\n"
+    )
+    blocks = [build_paper_block(i + 1, it["title"], it["pmid"], it.get("point"))
+              for i, it in enumerate(items)]
+    # 篇與篇、以及 frontmatter 區與內容，皆以一行 --- 隔開（符合 C 的 split(/\n-{3,}\n/)）
+    return head + "\n---\n" + "\n\n---\n\n".join(blocks) + "\n"
