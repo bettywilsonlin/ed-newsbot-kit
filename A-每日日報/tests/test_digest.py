@@ -42,6 +42,21 @@ class TestDigest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 digest.load_config()
 
+    def test_filter_with_abstract_drops_empty(self):
+        papers = [
+            {"pmid": "1", "title": "a", "abstract": "real abstract"},
+            {"pmid": "2", "title": "b", "abstract": ""},
+            {"pmid": "3", "title": "c", "abstract": None},
+            {"pmid": "4", "title": "d", "abstract": "   "},
+        ]
+        got = digest.filter_with_abstract(papers)
+        self.assertEqual([p["pmid"] for p in got], ["1"])
+
+    def test_dedupe_pmids_preserves_order_and_removes_seen(self):
+        pmids = ["1", "2", "2", "3", "1"]
+        seen = {"3"}
+        self.assertEqual(digest.dedupe_pmids(pmids, seen), ["1", "2"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -42,3 +42,17 @@ def load_config():
         "ai_provider": os.environ.get("AI_PROVIDER", "none"),
         "ai_api_key": os.environ.get("AI_API_KEY", ""),
     }
+
+def filter_with_abstract(papers):
+    """丟掉 abstract 為 None 或空白（含只有空白字）者。"""
+    return [p for p in papers if (p.get("abstract") or "").strip()]
+
+def dedupe_pmids(pmids, seen):
+    """保序去重：去掉重複與已存在於 seen 的 PMID；回傳去重後的列表。"""
+    out, got = [], set()
+    for p in pmids:
+        if p in seen or p in got:
+            continue
+        got.add(p)
+        out.append(p)
+    return out
