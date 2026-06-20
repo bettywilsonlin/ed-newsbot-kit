@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# clasp（GAS 命令列工具）——這些含本機 script ID / 登入憑證，絕不可進版控
+.clasp.json
+.clasprc.json
+
+# Node（若用 clasp，npm 會產生這些）
+node_modules/
+npm-debug.log*
+
+# 編輯器雜物
+*.swp
+*~
+.vscode/
+.idea/
+
+# log
+*.log
