@@ -123,6 +123,22 @@ class TestDigest(unittest.TestCase):
         with mock.patch.object(digest, "_call_anthropic", lambda ab, key: "中文重點"):
             self.assertEqual(digest.write_summary("abstract", "claude", "key"), "中文重點")
 
+    def test_feeds_count_is_16(self):
+        self.assertEqual(len(digest.FEEDS), 16)
+
+    def test_write_dedup_and_read_seen_roundtrip(self):
+        today = datetime.date(2026, 6, 21)
+        d = tempfile.mkdtemp()
+        digest.write_dedup(d, today, ["1", "2"])
+        self.assertEqual(digest.read_seen(d, today), {"1", "2"})
+
+    def test_write_archive_creates_dated_file(self):
+        today = datetime.date(2026, 6, 21)
+        d = tempfile.mkdtemp()
+        digest.write_archive(d, today, "# hello")
+        files = [f for f in os.listdir(d) if "2026-06-21" in f and f.endswith(".md")]
+        self.assertEqual(len(files), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -148,3 +148,150 @@ def write_summary(abstract, provider, api_key):
         return None
     except Exception:
         return None  # 自動降級：摘要失敗只給標題連結，不讓整支掛
+
+
+# ── I/O 層：PubMed 抓取、LINE 推送、去重讀寫、存檔 ──────────────────────────
+
+# 16 個 feed：前 11 為期刊 query，後 5 為主題 query（與路1 母本逐字一致）
+FEEDS = [
+    ("Resuscitation", '"Resuscitation"[Journal]'),
+    ("Annals of Emergency Medicine", '"Annals of emergency medicine"[Journal]'),
+    ("Academic Emergency Medicine", '"Academic emergency medicine"[Journal]'),
+    ("American J of Emergency Medicine", '"The American journal of emergency medicine"[Journal]'),
+    ("Emergency Medicine Journal", '"Emergency medicine journal"[Journal]'),
+    ("Prehospital Emergency Care", '"Prehospital emergency care"[Journal]'),
+    ("Critical Care", '"Critical care"[Journal]'),
+    ("Intensive Care Medicine", '"Intensive care medicine"[Journal]'),
+    ("Scand J Trauma Resusc Emerg Med", '"Scand J Trauma Resusc Emerg Med"[Journal]'),
+    ("Eur J Emerg Med", '"Eur J Emerg Med"[Journal]'),
+    ("World J Emerg Med", '"World J Emerg Med"[Journal]'),
+    ("Resuscitative TEE", 'transesophageal echocardiography AND (cardiac arrest OR resuscitation OR periarrest OR shock) NOT (TAVI OR TAVR OR transcatheter)'),
+    ("REBOA", '(REBOA OR "resuscitative endovascular balloon occlusion of the aorta" OR "resuscitative endovascular balloon occlusion")'),
+    ("ECPR", '(ECPR OR "extracorporeal cardiopulmonary resuscitation" OR "extracorporeal CPR")'),
+    ("TRM", '("crew resource management" OR "crisis resource management" OR "team resource management" OR "teamwork training") AND (emergency OR resuscitation OR "acute care" OR "patient safety")'),
+    ("Simulation", '("simulation training"[MeSH Terms] OR "simulation-based education" OR "in situ simulation" OR "high-fidelity simulation") AND (emergency OR resuscitation OR "acute care" OR "critical care")'),
+]
+
+
+def _get(url):
+    """底層 HTTP GET 工具函式，回傳解碼後字串。"""
+    with urllib.request.urlopen(url, timeout=30) as r:
+        return r.read().decode("utf-8")
+
+
+def read_seen(dedup_dir, today):
+    """讀取近 8 天的去重 JSON，回傳已推送 PMID 的 set（讓今天不重複推送舊文）。"""
+    if not os.path.isdir(dedup_dir):
+        return set()
+    seen = set()
+    for n in recent_dedup_filenames(os.listdir(dedup_dir), today):
+        try:
+            with open(os.path.join(dedup_dir, n), encoding="utf-8") as f:
+                seen.update(parse_pushed_pmids(f.read()))
+        except OSError:
+            continue
+    return seen
+
+
+def esearch(query):
+    """對 PubMed esearch 送出查詢，回傳過去 2 天符合條件的 PMID 列表（最多 30）。"""
+    q = urllib.parse.urlencode({
+        "db": "pubmed", "term": f"({query}) AND {EXCLUSION}",
+        "datetype": "edat", "reldate": "2", "retmax": "30", "retmode": "json"})
+    res = json.loads(_get(f"{EUTILS}/esearch.fcgi?{q}"))
+    return res.get("esearchresult", {}).get("idlist", [])
+
+
+def esummary(pmids):
+    """批次查 PubMed esummary，回傳 {pmid: title} dict（title 去尾部句號與空白）。"""
+    if not pmids:
+        return {}
+    q = urllib.parse.urlencode({"db": "pubmed", "id": ",".join(pmids), "retmode": "json"})
+    res = json.loads(_get(f"{EUTILS}/esummary.fcgi?{q}")).get("result", {})
+    return {p: (res.get(p, {}).get("title", "") or "").rstrip(". ") for p in pmids}
+
+
+def efetch_abstract(pmid):
+    """抓單篇 PubMed abstract 純文字；網路失敗時降級回 None（避免中斷整批）。"""
+    q = urllib.parse.urlencode({"db": "pubmed", "id": pmid,
+                                "rettype": "abstract", "retmode": "text"})
+    try:
+        txt = _get(f"{EUTILS}/efetch.fcgi?{q}").strip()
+        return txt or None
+    except urllib.error.URLError:
+        return None
+
+
+def fetch_new(seen):
+    """跑完所有 FEEDS 的 PubMed 查詢，去重、抓 abstract，再過濾掉沒有 abstract 的篇章。
+    每次 API 呼叫之間用 RATE_LIMIT 秒間隔，避免超過 NCBI 速率限制。"""
+    all_pmids = []
+    for _, query in FEEDS:
+        try:
+            all_pmids += esearch(query)
+        except urllib.error.URLError:
+            pass
+        time.sleep(RATE_LIMIT)
+    new = dedupe_pmids(all_pmids, seen)
+    titles = esummary(new)
+    time.sleep(RATE_LIMIT)
+    papers = []
+    for pmid in new:
+        ab = efetch_abstract(pmid)
+        time.sleep(RATE_LIMIT)
+        papers.append({"pmid": pmid, "title": titles.get(pmid, ""), "abstract": ab, "point": None})
+    return filter_with_abstract(papers)
+
+
+def push_line(token, target, text):
+    """呼叫 LINE Messaging API push message；訊息截到 4900 字（LINE 上限 5000）。
+    非 2xx 時印錯誤但不 raise，讓 main 仍能繼續寫去重與存檔。"""
+    data = json.dumps({"to": target,
+                       "messages": [{"type": "text", "text": text[:4900]}]}).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.line.me/v2/bot/message/push", data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        print("LINE 推送非 200：", e.code, e.read().decode("utf-8", "replace"))
+        return e.code
+
+
+def write_dedup(dedup_dir, today, pmids):
+    """把今天推送的 PMID 列表寫成 JSON，供後續 read_seen 去重用。"""
+    os.makedirs(dedup_dir, exist_ok=True)
+    path = os.path.join(dedup_dir, f"paperbot_pushed_{today.isoformat()}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"date": today.isoformat(), "pushed_pmids": pmids}, f, ensure_ascii=False)
+
+
+def write_archive(archive_dir, today, markdown):
+    """把當日完整 Markdown 存成 `ED newsbot YYYY-MM-DD.md`，供 MyBrain 查詢。"""
+    os.makedirs(archive_dir, exist_ok=True)
+    path = os.path.join(archive_dir, f"ED newsbot {today.isoformat()}.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(markdown)
+
+
+def main():
+    """主流程：讀設定 → 去重 → 抓新文 → AI 摘要 → 推 LINE → 寫去重 → 寫存檔。"""
+    cfg = load_config()
+    today = datetime.date.today()
+    seen = read_seen(cfg["dedup_dir"], today)
+    papers = fetch_new(seen)
+    for p in papers:
+        p["point"] = write_summary(p["abstract"], cfg["ai_provider"], cfg["ai_api_key"])
+    full = papers[:CAP]
+    status = push_line(cfg["line_token"], cfg["target_id"], build_line_text(today, papers))
+    print("LINE status:", status)
+    if papers:
+        write_dedup(cfg["dedup_dir"], today, [p["pmid"] for p in full])
+    if papers and cfg["archive_dir"]:
+        write_archive(cfg["archive_dir"], today, build_archive_markdown(today, full))
+
+
+if __name__ == "__main__":
+    main()
