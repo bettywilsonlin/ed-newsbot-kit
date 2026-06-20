@@ -2,7 +2,7 @@
 
 每天台灣早上 8 點，自動抓 PubMed 急診新論文、寫繁中重點、推到你的 LINE，並把當天論文存一份進你的 Google Drive 資料夾（給互動 bot 之後回查用）。
 
-> **前提**：Claude Max（含 Routines）、一個開了 Messaging API 的 LINE channel、一個 Google 帳號。
+> **前提**：Claude 任一付費方案（Pro／Max／Team／Enterprise，**不限 Max**）且已開啟 Claude Code on the web、一個開了 Messaging API 的 LINE channel、一個 Google 帳號。
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## Step 1：建 Routine ＋ 環境設定
 
-**Routines 在哪**：Routines 是 Claude 的雲端排程代理功能（**需要 Claude Max**，電腦關機也照跑）。在你的 Claude 介面找到「Routines／排程」入口，新建一個。看不到這個入口，代表你的方案或地區還沒開放 Routines。
+**Routines 在哪**：Routines 是 Claude 的雲端排程代理功能（電腦關機也照跑，目前為 research preview）。**任一付費方案都能用（Pro／Max／Team／Enterprise，不限 Max；免費方案不行）**，前提是帳號已開啟 Claude Code on the web。入口：到 [claude.ai/code/routines](https://claude.ai/code/routines) 按「New routine」，或在 Claude Code CLI 打 `/schedule`。看不到，多半是還沒開 Claude Code on the web，或組織管理員把 Routines 關掉了。
 
 新建後，**Environment（環境）** 這樣設：
 
