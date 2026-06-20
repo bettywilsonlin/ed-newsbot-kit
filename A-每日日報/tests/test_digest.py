@@ -139,6 +139,20 @@ class TestDigest(unittest.TestCase):
         files = [f for f in os.listdir(d) if "2026-06-21" in f and f.endswith(".md")]
         self.assertEqual(len(files), 1)
 
+    def test_chunk_text_splits_long_message_within_limit(self):
+        paras = [f"段落{i} " + "x" * 1000 for i in range(20)]   # ~20k 字
+        text = "\n\n".join(paras)
+        chunks = digest.chunk_text(text, limit=4900)
+        self.assertGreater(len(chunks), 1)
+        for c in chunks:
+            self.assertLessEqual(len(c), 4900)
+        joined = "\n\n".join(chunks)
+        for i in range(20):
+            self.assertIn(f"段落{i}", joined)   # 內容不遺漏
+
+    def test_chunk_text_short_message_single_chunk(self):
+        self.assertEqual(digest.chunk_text("短訊息", limit=4900), ["短訊息"])
+
 
 if __name__ == "__main__":
     unittest.main()

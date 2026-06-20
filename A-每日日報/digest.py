@@ -243,6 +243,26 @@ def fetch_new(seen):
     return filter_with_abstract(papers)
 
 
+def chunk_text(text, limit=4900):
+    """把長訊息按段落（空行）切成每塊 ≤limit 字，盡量不切斷段落；單段超長才硬切。"""
+    chunks, cur = [], ""
+    for p in text.split("\n\n"):
+        piece = (cur + "\n\n" + p) if cur else p
+        if len(piece) <= limit:
+            cur = piece
+            continue
+        if cur:
+            chunks.append(cur)
+            cur = ""
+        while len(p) > limit:
+            chunks.append(p[:limit])
+            p = p[limit:]
+        cur = p
+    if cur:
+        chunks.append(cur)
+    return chunks or [""]
+
+
 def push_line(token, target, text):
     """呼叫 LINE Messaging API push message；訊息截到 4900 字（LINE 上限 5000）。
     非 2xx 時印錯誤但不 raise，讓 main 仍能繼續寫去重與存檔。"""
@@ -285,8 +305,10 @@ def main():
     for p in papers:
         p["point"] = write_summary(p["abstract"], cfg["ai_provider"], cfg["ai_api_key"])
     full = papers[:CAP]
-    status = push_line(cfg["line_token"], cfg["target_id"], build_line_text(today, papers))
-    print("LINE status:", status)
+    last_status = None
+    for chunk in chunk_text(build_line_text(today, papers)):
+        last_status = push_line(cfg["line_token"], cfg["target_id"], chunk)
+    print("LINE status:", last_status)
     if papers:
         write_dedup(cfg["dedup_dir"], today, [p["pmid"] for p in full])
     if papers and cfg["archive_dir"]:
