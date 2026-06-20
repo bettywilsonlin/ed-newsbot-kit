@@ -1,10 +1,32 @@
 """ED newsbot 每日日報腳本（路2，適用各 AI）。純 Python 3 標準庫。"""
 import os, sys, json, time, datetime, urllib.request, urllib.parse, urllib.error
+import re
 
 RATE_LIMIT = 0.4
 CAP = 50
 EXCLUSION = 'NOT (letter[pt] OR editorial[pt] OR comment[pt] OR news[pt])'
 EUTILS = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
+_DEDUP_RE = re.compile(r"^paperbot_pushed_(\d{4}-\d{2}-\d{2})\.json$")
+
+def recent_dedup_filenames(names, today, days=8):
+    out = []
+    for n in names:
+        m = _DEDUP_RE.match(n)
+        if not m:
+            continue
+        try:
+            d = datetime.date.fromisoformat(m.group(1))
+        except ValueError:
+            continue
+        if 0 <= (today - d).days < days:
+            out.append(n)
+    return out
+
+def parse_pushed_pmids(json_text):
+    try:
+        return list(json.loads(json_text).get("pushed_pmids", []))
+    except (ValueError, AttributeError):
+        return []
 
 def load_config():
     def need(key):
